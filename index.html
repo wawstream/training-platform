@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Обучение сотрудников</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    
+    body {
+      background-color: #f5f5f5;
+      color: #333;
+      padding-bottom: 70px;
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 15px;
+    }
+    
+    header {
+      background: white;
+      padding: 15px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .user-avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: #0088cc;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+    
+    .user-info h1 {
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+    
+    .user-info p {
+      color: #666;
+      font-size: 0.9rem;
+    }
+    
+    .tabs {
+      display: flex;
+      margin-top: 15px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 10px 0;
+      cursor: pointer;
+    }
+    
+    .tab.active {
+      color: #0088cc;
+      border-bottom: 2px solid #0088cc;
+      font-weight: 500;
+    }
+    
+    .search-box {
+      margin: 15px 0;
+    }
+    
+    .search-box input {
+      width: 100%;
+      padding: 10px 15px;
+      border: 1px solid #ddd;
+      border-radius: 20px;
+      font-size: 0.9rem;
+    }
+    
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 20px 0 10px;
+    }
+    
+    .events-list, .materials-list {
+      display: grid;
+      gap: 15px;
+    }
+    
+    .event-card, .material-card {
+      background: white;
+      border-radius: 12px;
+      padding: 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      transition: transform 0.2s;
+    }
+    
+    .event-card:hover, .material-card:hover {
+      transform: translateY(-2px);
+    }
+    
+    .event-title, .material-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 1.1rem;
+    }
+    
+    .event-info, .material-info {
+      color: #666;
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+    
+    .event-group {
+      display: inline-block;
+      background: #e3f2fd;
+      color: #1976d2;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      margin-right: 5px;
+    }
+    
+    .register-btn {
+      background: #0088cc;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 20px;
+      width: 100%;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .register-btn:hover {
+      background: #0069a7;
+    }
+    
+    .cancel-btn {
+      background: #e0e0e0;
+      color: #333;
+    }
+    
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      display: flex;
+      justify-content: space-around;
+      padding: 10px 0;
+      box-shadow: 0 -1px 5px rgba(0,0,0,0.1);
+    }
+    
+    .footer-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #666;
+      font-size: 0.8rem;
+    }
+    
+    .footer-btn.active {
+      color: #0088cc;
+    }
+    
+    .footer-icon {
+      font-size: 1.2rem;
+      margin-bottom: 3px;
+    }
+    
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      display: none;
+    }
+    
+    .modal-content {
+      background: white;
+      border-radius: 15px;
+      width: 90%;
+      max-width: 500px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    
+    .modal-header {
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .modal-title {
+      font-weight: 600;
+      font-size: 1.2rem;
+    }
+    
+    .close-modal {
+      font-size: 1.5rem;
+      color: #999;
+      cursor: pointer;
+    }
+    
+    .modal-body {
+      padding: 15px;
+    }
+    
+    .modal-info {
+      margin-bottom: 15px;
+    }
+    
+    .modal-label {
+      color: #666;
+      font-size: 0.9rem;
+      margin-bottom: 5px;
+    }
+    
+    .modal-value {
+      font-weight: 500;
+    }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      margin-top: 5px;
+    }
+    
+    .status-available {
+      background: #e8f5e9;
+      color: #388e3c;
+    }
+    
+    .status-registered {
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+    
+    .status-completed {
+      background: #f3e5f5;
+      color: #7b1fa2;
+    }
+    
+    .group-badge {
+      background: #e3f2fd;
+      color: #1976d2;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      display: inline-block;
+    }
+    
+    .leaderboard {
+      background: white;
+      border-radius: 12px;
+      padding: 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      margin-bottom: 15px;
+    }
+    
+    .leaderboard-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .leaderboard-rank {
+      width: 30px;
+      font-weight: bold;
+      color: #666;
+    }
+    
+    .leaderboard-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #0088cc;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 10px;
+      font-weight: bold;
+    }
+    
+    .leaderboard-name {
+      flex: 1;
+    }
+    
+    .leaderboard-points {
+      font-weight: 500;
+    }
+    
+    .top-user {
+      background: #fff8e1;
+    }
+    
+    .top-user .leaderboard-rank {
+      color: #ff9800;
+    }
+    
+    .no-events {
+      text-align: center;
+      padding: 30px 15px;
+      background: white;
+      border-radius: 12px;
+    }
+    
+    .no-events-icon {
+      font-size: 3rem;
+      color: #ddd;
+      margin-bottom: 15px;
+    }
+    
+    .no-events h3 {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+    
+    .no-events p {
+      color: #666;
+      font-size: 0.9rem;
+    }
+    
+    .tabs-filter {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding: 10px 0 15px;
+      margin-bottom: -5px;
+    }
+    
+    .filter-btn {
+      background: #f5f5f5;
+      border: none;
+      padding: 5px 15px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    
+    .filter-btn.active {
+      background: #e3f2fd;
+      color: #1976d2;
+      font-weight: 500;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin: 15px 0;
+    }
+    
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin: 10px 0;
+    }
+    
+    .stat-label {
+      color: #666;
+      font-size: 0.9rem;
+    }
+    
+    .chart-placeholder {
+      background: #f5f5f5;
+      border-radius: 12px;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #999;
+      margin: 15px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="user-profile">
+        <div class="user-avatar" id="userAvatar">А</div>
+        <div class="user-info">
+          <h1 id="userName">Иван Иванов</h1>
+          <p>Сотрудник отдела продаж</p>
+        </div>
+      </div>
+      
+      <div class="tabs">
+        <div class="tab active" data-tab="schedule">Расписание</div>
+        <div class="tab" data-tab="materials">Материалы</div>
+        <div class="tab" data-tab="leaderboard">Рейтинг</div>
+      </div>
+      
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Поиск мероприятий и материалов...">
+      </div>
+    </header>
+    
+    <main>
+      <!-- Расписание -->
+      <div class="tab-content" id="schedule-content">
+        <h2 class="section-title">Предстоящие мероприятия</h2>
+        
+        <div class="tabs-filter">
+          <button class="filter-btn active" data-filter="all">Все</button>
+          <button class="filter-btn" data-filter="online">Онлайн</button>
+          <button class="filter-btn" data-filter="offline">Офлайн</button>
+          <button class="filter-btn" data-filter="registered">Зарегистрированные</button>
+        </div>
+        
+        <div class="events-list" id="eventsList">
+          <!-- События будут добавлены через JavaScript -->
+        </div>
+      </div>
+      
+      <!-- Материалы -->
+      <div class="tab-content" id="materials-content" style="display: none;">
+        <h2 class="section-title">Учебные материалы</h2>
+        
+        <div class="tabs-filter">
+          <button class="filter-btn active" data-filter="all">Все</button>
+          <button class="filter-btn" data-filter="presentations">Презентации</button>
+          <button class="filter-btn" data-filter="videos">Видео</button>
+          <button class="filter-btn" data-filter="templates">Шаблоны</button>
+          <button class="filter-btn" data-filter="documents">Документы</button>
+        </div>
+        
+        <div class="materials-list" id="materialsList">
+          <!-- Материалы будут добавлены через JavaScript -->
+        </div>
+      </div>
+      
+      <!-- Рейтинг -->
+      <div class="tab-content" id="leaderboard-content" style="display: none;">
+        <h2 class="section-title">Рейтинг сотрудников</h2>
+        
+        <div class="leaderboard top-user">
+          <div class="leaderboard-item">
+            <div class="leaderboard-rank">1</div>
+            <div class="leaderboard-avatar">А</div>
+            <div class="leaderboard-name">Анна Смирнова</div>
+            <div class="leaderboard-points">1450 баллов</div>
+          </div>
+        </div>
+        
+        <div id="leaderboardList">
+          <!-- Рейтинг будет добавлен через JavaScript -->
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <!-- Модальное окно для деталей мероприятия -->
+  <div class="modal" id="eventModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="modalTitle">Название мероприятия</div>
+        <div class="close-modal" id="closeModal">&times;</div>
+      </div>
+      <div class="modal-body">
+        <div class="modal-info">
+          <div class="modal-label">Дата и время</div>
+          <div class="modal-value" id="modalDate">25 октября 2023, 10:00 - 12:00</div>
+        </div>
+        
+        <div class="modal-info">
+          <div class="modal-label">Формат</div>
+          <div class="modal-value" id="modalFormat">Онлайн</div>
+        </div>
+        
+        <div class="modal-info">
+          <div class="modal-label">Преподаватель</div>
+          <div class="modal-value" id="modalInstructor">Иван Петров</div>
+        </div>
+        
+        <div class="modal-info">
+          <div class="modal-label">Группа</div>
+          <div class="group-badge" id="modalGroup">Новые сотрудники</div>
+        </div>
+        
+        <div class="modal-info">
+          <div class="modal-label">Описание</div>
+          <div class="modal-value" id="modalDescription">Обучение основным техникам продаж и работе с возражениями</div>
+        </div>
+        
+        <div class="modal-info">
+          <div class="modal-label">Места</div>
+          <div class="modal-value" id="modalCapacity">15/30 мест</div>
+        </div>
+        
+        <div class="modal-info">
+          <div class="modal-label">Статус</div>
+          <div class="status-badge status-available" id="modalStatus">Доступно</div>
+        </div>
+        
+        <button class="register-btn" id="modalRegisterBtn">Записаться на мероприятие</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Футер с навигацией -->
+  <nav class="footer">
+    <div class="footer-btn active" data-footer-tab="schedule">
+      <span class="footer-icon">📅</span>
+      <span>Расписание</span>
+    </div>
+    <div class="footer-btn" data-footer-tab="materials">
+      <span class="footer-icon">📚</span>
+      <span>Материалы</span>
+    </div>
+    <div class="footer-btn" data-footer-tab="leaderboard">
+      <span class="footer-icon">🏆</span>
+      <span>Рейтинг</span>
+    </div>
+    <div class="footer-btn" id="logoutBtn">
+      <span class="footer-icon">🚪</span>
+      <span>Выход</span>
+    </div>
+  </nav>
+  
+  <script>
+    // Инициализация Telegram WebApp
+    const tg = window.Telegram?.WebApp || {
+      ready: () => console.log('Telegram WebApp not available'),
+      expand: () => console.log('Telegram WebApp not available'),
+      close: () => window.close(),
+      initDataUnsafe: {
+        user: {
+          id: 1,
+          first_name: 'Иван',
+          last_name: 'Иванов',
+          username: 'ivan_ivanov'
+        }
+      }
+    };
+    
+    tg.ready();
+    tg.expand();
+    
+    // Данные для приложения
+    const scheduleData = [
+      {
+        id: 1,
+        title: 'Основы продаж',
+        date: '25 октября 2023',
+        time: '10:00 - 12:00',
+        format: 'online',
+        instructor: 'Иван Петров',
+        group: 'Новые сотрудники',
+        status: 'available',
+        description: 'Обучение основным техникам продаж и работе с возражениями',
+        capacity: '15/30'
+      },
+      {
+        id: 2,
+        title: 'Командная работа',
+        date: '26 октября 2023',
+        time: '14:00 - 16:00',
+        format: 'offline',
+        instructor: 'Мария Сидорова',
+        group: 'Менеджеры',
+        status: 'registered',
+        description: 'Как эффективно работать в команде и распределять задачи',
+        capacity: '20/20'
+      },
+      {
+        id: 3,
+        title: 'Тайм-менеджмент',
+        date: '27 октября 2023',
+        time: '11:00 - 13:00',
+        format: 'online',
+        instructor: 'Алексей Иванов',
+        group: 'Все сотрудники',
+        status: 'completed',
+        description: 'Методы эффективного управления временем в рабочих процессах',
+        capacity: '35/40'
+      }
+    ];
+    
+    const materialsData = [
+      {
+        id: 1,
+        title: 'Презентация по продажам',
+        category: 'presentations',
+        description: 'Основные техники и стратегии'
+      },
+      {
+        id: 2,
+        title: 'Видео: Работа с возражениями',
+        category: 'videos',
+        description: 'Как отвечать на возражения клиентов'
+      },
+      {
+        id: 3,
+        title: 'Шаблон плана встречи',
+        category: 'templates',
+        description: 'Готовый шаблон для планирования встреч'
+      },
+      {
+        id: 4,
+        title: 'Инструкция по CRM',
+        category: 'documents',
+        description: 'Полное руководство по использованию CRM'
+      }
+    ];
+    
+    const leaderboardData = [
+      { id: 1, name: 'Анна Смирнова', points: 1450, position: 1 },
+      { id: 2, name: 'Дмитрий Петров', points: 1320, position: 2 },
+      { id: 3, name: 'Елена Кузнецова', points: 1280, position: 3 },
+      { id: 4, name: 'Сергей Иванов', points: 1150, position: 4 },
+      { id: 5, name: 'Ольга Соколова', points: 1090, position: 5 }
+    ];
+    
+    // Инициализация пользователя
+    function initUser() {
+      const user = tg.initDataUnsafe?.user || {
+        id: 1,
+        first_name: 'Иван',
+        last_name: 'Иванов',
+        username: 'ivan_ivanov'
+      };
+      
+      document.getElementById('userName').textContent = `${user.first_name} ${user.last_name}`;
+      document.getElementById('userAvatar').textContent = `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`;
+    }
+    
+    // Отображение расписания
+    function renderSchedule() {
+      const eventsList = document.getElementById('eventsList');
+      eventsList.innerHTML = '';
+      
+      scheduleData.forEach(event => {
+        const eventElement = document.createElement('div');
+        eventElement.className = 'event-card';
+        eventElement.dataset.eventId = event.id;
+        eventElement.innerHTML = `
+          <h3 class="event-title">${event.title}</h3>
+          <p class="event-info">📅 ${event.date} | ${event.time}</p>
+          <p class="event-info">👨‍🏫 ${event.instructor}</p>
+          <div class="event-group">${event.group}</div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+            <span class="status-badge status-${event.status}">${getStatusText(event.status)}</span>
+            <button class="register-btn ${event.status === 'registered' ? 'cancel-btn' : ''}" 
+                    data-event-id="${event.id}">
+              ${event.status === 'registered' ? 'Отменить' : 'Записаться'}
+            </button>
+          </div>
+        `;
+        eventsList.appendChild(eventElement);
+      });
+      
+      // Добавляем обработчики событий
+      document.querySelectorAll('.event-card').forEach(card => {
+        card.addEventListener('click', function() {
+          const eventId = this.dataset.eventId;
+          openEventModal(eventId);
+        });
+      });
+      
+      document.querySelectorAll('.register-btn, .cancel-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+          e.stopPropagation();
+          const eventId = this.dataset.eventId;
+          toggleRegistration(eventId);
+        });
+      });
+    }
+    
+    // Отображение материалов
+    function renderMaterials() {
+      const materialsList = document.getElementById('materialsList');
+      materialsList.innerHTML = '';
+      
+      materialsData.forEach(material => {
+        const materialElement = document.createElement('div');
+        materialElement.className = 'material-card';
+        materialElement.innerHTML = `
+          <h3 class="material-title">${material.title}</h3>
+          <p class="material-info">${getCategoryName(material.category)}</p>
+          <p class="material-info">${material.description}</p>
+        `;
+        materialsList.appendChild(materialElement);
+      });
+    }
+    
+    // Отображение рейтинга
+    function renderLeaderboard() {
+      const leaderboardList = document.getElementById('leaderboardList');
+      leaderboardList.innerHTML = '';
+      
+      leaderboardData.slice(1).forEach(user => {
+        const userElement = document.createElement('div');
+        userElement.className = 'leaderboard';
+        userElement.innerHTML = `
+          <div class="leaderboard-item">
+            <div class="leaderboard-rank">${user.position}</div>
+            <div class="leaderboard-avatar">${user.name.charAt(0)}</div>
+            <div class="leaderboard-name">${user.name}</div>
+            <div class="leaderboard-points">${user.points} баллов</div>
+          </div>
+        `;
+        leaderboardList.appendChild(userElement);
+      });
+    }
+    
+    // Вспомогательные функции
+    function getStatusText(status) {
+      switch(status) {
+        case 'available': return 'Доступно';
+        case 'registered': return 'Зарегистрирован';
+        case 'completed': return 'Пройдено';
+        default: return 'Доступно';
+      }
+    }
+    
+    function getCategoryName(category) {
+      const categories = {
+        'presentations': 'Презентации',
+        'videos': 'Видео',
+        'templates': 'Шаблоны',
+        'documents': 'Документы'
+      };
+      return categories[category] || category;
+    }
+    
+    function toggleRegistration(eventId) {
+      const event = scheduleData.find(e => e.id == eventId);
+      if (!event) return;
+      
+      if (event.status === 'available') {
+        event.status = 'registered';
+        alert('Вы успешно зарегистрированы на мероприятие!');
+      } else {
+        event.status = 'available';
+        alert('Регистрация отменена');
+      }
+      
+      renderSchedule();
+    }
+    
+    function openEventModal(eventId) {
+      const event = scheduleData.find(e => e.id == eventId);
+      if (!event) return;
+      
+      document.getElementById('modalTitle').textContent = event.title;
+      document.getElementById('modalDate').textContent = `${event.date}, ${event.time}`;
+      document.getElementById('modalFormat').textContent = event.format === 'online' ? 'Онлайн' : 'Офлайн';
+      document.getElementById('modalInstructor').textContent = event.instructor;
+      document.getElementById('modalGroup').textContent = event.group;
+      document.getElementById('modalDescription').textContent = event.description;
+      document.getElementById('modalCapacity').textContent = `${event.capacity} мест`;
+      
+      const statusBadge = document.getElementById('modalStatus');
+      statusBadge.textContent = getStatusText(event.status);
+      statusBadge.className = 'status-badge';
+      statusBadge.classList.add(`status-${event.status}`);
+      
+      const registerBtn = document.getElementById('modalRegisterBtn');
+      registerBtn.textContent = event.status === 'registered' ? 'Отменить регистрацию' : 'Записаться на мероприятие';
+      registerBtn.onclick = function() {
+        toggleRegistration(eventId);
+        document.getElementById('eventModal').style.display = 'none';
+      };
+      
+      document.getElementById('eventModal').style.display = 'flex';
+    }
+    
+    // Инициализация приложения
+    document.addEventListener('DOMContentLoaded', function() {
+      initUser();
+      renderSchedule();
+      renderMaterials();
+      renderLeaderboard();
+      
+      // Переключение вкладок
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          this.classList.add('active');
+          
+          const tabName = this.dataset.tab;
+          document.querySelectorAll('.tab-content').forEach(content => {
+            content.style.display = 'none';
+          });
+          document.getElementById(`${tabName}-content`).style.display = 'block';
+        });
+      });
+      
+      // Переключение вкладок в футере
+      document.querySelectorAll('.footer-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.footer-btn').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          
+          const tabName = this.dataset.footerTab;
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          document.querySelector(`.tab[data-tab="${tabName}"]`).classList.add('active');
+          
+          document.querySelectorAll('.tab-content').forEach(content => {
+            content.style.display = 'none';
+          });
+          document.getElementById(`${tabName}-content`).style.display = 'block';
+        });
+      });
+      
+      // Закрытие модального окна
+      document.getElementById('closeModal').addEventListener('click', function() {
+        document.getElementById('eventModal').style.display = 'none';
+      });
+      
+      // Выход
+      document.getElementById('logoutBtn').addEventListener('click', function() {
+        tg.close();
+      });
+      
+      // Поиск
+      document.getElementById('searchInput').addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        
+        // В реальной системе здесь был бы фильтр
+        if (query) {
+          alert('Поиск работает в реальной системе. Здесь показан пример.');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
