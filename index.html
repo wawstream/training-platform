@@ -608,6 +608,51 @@
         color: #aaa;
       }
     }
+    
+    /* Дополнительные стили для диагностики */
+    .api-error {
+      background-color: #ffebee;
+      color: #b71c1c;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 10px 0;
+      font-size: 0.9rem;
+    }
+    
+    .api-error h4 {
+      margin-bottom: 5px;
+    }
+    
+    .api-error code {
+      display: block;
+      background-color: #f5f5f5;
+      padding: 8px;
+      border-radius: 4px;
+      margin-top: 5px;
+      overflow-x: auto;
+    }
+    
+    .api-test {
+      background-color: #e8f5e9;
+      color: #1b5e20;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 5px 0;
+      font-size: 0.85rem;
+    }
+    
+    .api-test-success {
+      background-color: #e8f5e9;
+    }
+    
+    .api-test-error {
+      background-color: #ffebee;
+    }
+    
+    .api-test-title {
+      font-weight: 500;
+      margin-bottom: 3px;
+    }
   </style>
 </head>
 <body>
@@ -1001,7 +1046,7 @@
     tg.expand();
     
     // Настройки
-    const API_URL = 'https://script.google.com/macros/s/AKfycbwzgG4Loe6EtjR8-DeX9wvasxoaO_AhtDUFzNmGhUEcbEoj-FjrWy8uCD_-zcCGfOfC/exec'; // Ваш API_URL
+    const API_URL = 'https://script.google.com/macros/s/AKfycbybxzuPJQKnpSZA7LgZcatBgAJVdlC6UuN3ZmkUj0EeodUPPayDLyLVIYhPY-urPq3U/exec';
     
     // Глобальные переменные
     let currentUser = null;
@@ -1101,7 +1146,12 @@
     function checkUserRegistration() {
       // Проверяем, зарегистрирован ли пользователь
       fetch(`${API_URL}?action=getUser&userId=${currentUser.id}`)
-        .then(response => response.json())
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
         .then(data => {
           if (data && data.fullName) {
             userRegistered = true;
@@ -1113,6 +1163,28 @@
         })
         .catch(error => {
           console.error('Error checking user registration:', error);
+          
+          // Добавляем подробную информацию об ошибке
+          const modalBody = document.querySelector('#userRegistrationModal .modal-body');
+          if (modalBody) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'api-error';
+            errorDiv.innerHTML = `
+              <h4>Ошибка подключения к API</h4>
+              <p>Не удалось подключиться к серверу. Проверьте настройки:</p>
+              <ul>
+                <li>Google Apps Script развернут как веб-приложение</li>
+                <li>В настройках выбрано "Любой пользователь с аккаунтом Google"</li>
+                <li>Google Таблица имеет правильные настройки общего доступа</li>
+              </ul>
+              <p>Текущий URL API:</p>
+              <code>${API_URL}</code>
+              <p>Ошибка:</p>
+              <code>${error.message}</code>
+            `;
+            modalBody.appendChild(errorDiv);
+          }
+          
           userRegistered = false;
           document.getElementById('userRegistrationModal').style.display = 'flex';
         });
@@ -1138,19 +1210,37 @@
       if (API_URL.includes('AKfycbxY')) {
         console.log('API_URL не настроен. Используем настройки по умолчанию.');
         updateVisibilityBasedOnSettings();
+        
+        // Показываем сообщение об ошибке
+        const eventsList = document.getElementById('eventsList');
+        if (eventsList) {
+          eventsList.innerHTML = `
+            <div class="api-error">
+              <h4>Ошибка API</h4>
+              <p>API_URL не настроен. Замените его на свою ссылку из Google Apps Script</p>
+              <p>Текущий URL: ${API_URL}</p>
+            </div>
+          `;
+        }
         return;
       }
       
       // Пытаемся загрузить настройки из API
       fetch(`${API_URL}?action=getSettings`)
         .then(response => {
+          // Добавляем проверку статуса
           if (!response.ok) {
-            throw new Error('Network response was not ok');
+            throw new Error(`HTTP error! status: ${response.status}`);
           }
           return response.json();
         })
         .then(data => {
           isApiWorking = true;
+          
+          // Проверяем, есть ли ошибка в данных
+          if (data.error) {
+            throw new Error(data.error);
+          }
           
           // Проверяем и корректируем полученные настройки
           settings = {
@@ -1190,17 +1280,20 @@
           
           // Показываем сообщение об ошибке
           const eventsList = document.getElementById('eventsList');
-          eventsList.innerHTML = `
-            <div class="no-events">
-              <div class="no-events-icon">⚠️</div>
-              <h3>Ошибка подключения</h3>
-              <p>Не удалось подключиться к серверу. Проверьте настройки API.</p>
-              <button class="register-btn" id="retrySettingsBtn" style="margin-top: 15px;">Попробовать снова</button>
-            </div>
-          `;
-          
-          // Добавляем обработчик для кнопки повторной попытки
-          document.getElementById('retrySettingsBtn').addEventListener('click', tryLoadSettings);
+          if (eventsList) {
+            eventsList.innerHTML = `
+              <div class="api-error">
+                <h4>Ошибка загрузки настроек</h4>
+                <p>Не удалось подключиться к серверу. Проверьте настройки API.</p>
+                <p>Текущий URL: ${API_URL}</p>
+                <p>Ошибка: ${error.message}</p>
+                <button class="register-btn" id="retrySettingsBtn" style="margin-top: 15px;">Попробовать снова</button>
+              </div>
+            `;
+            
+            // Добавляем обработчик для кнопки повторной попытки
+            document.getElementById('retrySettingsBtn').addEventListener('click', tryLoadSettings);
+          }
         });
     }
     
@@ -1299,9 +1392,9 @@
       const materialsTab = document.querySelector('.tab[data-tab="materials"]');
       const leaderboardTab = document.querySelector('.tab[data-tab="leaderboard"]');
       
-      scheduleTab.style.display = settings.showSchedule ? 'block' : 'none';
-      materialsTab.style.display = settings.showMaterials ? 'block' : 'none';
-      leaderboardTab.style.display = settings.showLeaderboard ? 'block' : 'none';
+      if (scheduleTab) scheduleTab.style.display = settings.showSchedule ? 'block' : 'none';
+      if (materialsTab) materialsTab.style.display = settings.showMaterials ? 'block' : 'none';
+      if (leaderboardTab) leaderboardTab.style.display = settings.showLeaderboard ? 'block' : 'none';
       
       // Если все скрыто, показываем первый доступный раздел
       if (!settings.showSchedule && !settings.showMaterials && !settings.showLeaderboard) {
@@ -1356,11 +1449,6 @@
         document.getElementById('eventModal').style.display = 'none';
       });
       
-      // Выход
-      document.getElementById('logoutBtn').addEventListener('click', function() {
-        tg.close();
-      });
-      
       // Сохранение данных пользователя
       document.getElementById('saveUserBtn').addEventListener('click', function() {
         const fullName = document.getElementById('regFullName').value.trim();
@@ -1388,7 +1476,6 @@
       
       // Выход из админ-панели
       document.getElementById('adminLogoutBtn').addEventListener('click', function() {
-        localStorage.removeItem('adminPassword');
         isAdmin = false;
         
         // Скрываем админ-панель
@@ -1460,7 +1547,6 @@
       // Сохраняем данные в Google Таблицу
       fetch(`${API_URL}?action=updateUser`, {
         method: 'POST',
-        mode: 'no-cors',
         body: new URLSearchParams({
           userId: currentUser.id,
           fullName: fullName,
@@ -1468,7 +1554,12 @@
           department: department
         })
       })
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
       .then(data => {
         if (data.success) {
           currentUser.fullName = fullName;
@@ -1524,10 +1615,10 @@
         // Показываем сообщение об ошибке
         const eventsList = document.getElementById('eventsList');
         eventsList.innerHTML = `
-          <div class="no-events">
-            <div class="no-events-icon">⚠️</div>
-            <h3>API не настроен</h3>
+          <div class="api-error">
+            <h4>API не настроен</h4>
             <p>Замените API_URL в коде на свою ссылку из Google Apps Script</p>
+            <p>Текущий URL: ${API_URL}</p>
             <button class="register-btn" id="retryScheduleBtn" style="margin-top: 15px;">Попробовать снова</button>
           </div>
         `;
@@ -1540,7 +1631,7 @@
       fetch(`${API_URL}?action=getSchedule`)
         .then(response => {
           if (!response.ok) {
-            throw new Error('Network response was not ok');
+            throw new Error(`HTTP error! status: ${response.status}`);
           }
           return response.json();
         })
@@ -1569,9 +1660,8 @@
     function showEmptySchedule(message) {
       const eventsList = document.getElementById('eventsList');
       eventsList.innerHTML = `
-        <div class="no-events">
-          <div class="no-events-icon">⚠️</div>
-          <h3>Ошибка загрузки</h3>
+        <div class="api-error">
+          <h4>Ошибка загрузки</h4>
           <p>${message}</p>
           <button class="register-btn" id="retryScheduleBtn" style="margin-top: 15px;">Попробовать снова</button>
         </div>
@@ -1645,7 +1735,12 @@
       if (!isApiWorking || API_URL.includes('AKfycbxY')) return;
       
       fetch(`${API_URL}?action=getMaterials&eventId=${eventId}`)
-        .then(response => response.json())
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
         .then(materials => {
           // Обновляем данные в scheduleData
           const eventIndex = scheduleData.findIndex(e => e.id == eventId);
@@ -1732,7 +1827,12 @@
       }
       
       fetch(`${API_URL}?action=getRegistrations&eventId=${eventId}`)
-        .then(response => response.json())
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
         .then(registrations => {
           const isRegistered = registrations.some(reg => reg.userId == currentUser.id);
           
@@ -1795,7 +1895,12 @@
       }
       
       fetch(`${API_URL}?action=registerForEvent&eventId=${eventId}&userId=${currentUser.id}&fullName=${encodeURIComponent(fullName)}&department=${encodeURIComponent(department)}`)
-        .then(response => response.json())
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
         .then(data => {
           if (data.success) {
             alert('Вы успешно зарегистрированы на мероприятие!');
@@ -1828,14 +1933,30 @@
         return;
       }
       
-      // В реальной системе здесь был бы запрос к API для удаления регистрации
-      alert('Регистрация отменена');
-      loadSchedule();
-      
-      // Обновляем список зарегистрированных в админ-панели
-      if (isAdmin && document.getElementById('adminEventsSection').style.display !== 'none') {
-        loadRegistrations(eventId);
-      }
+      fetch(`${API_URL}?action=cancelRegistration&eventId=${eventId}&userId=${currentUser.id}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          if (data.success) {
+            alert('Регистрация отменена');
+            loadSchedule();
+            
+            // Обновляем список зарегистрированных в админ-панели
+            if (isAdmin && document.getElementById('adminEventsSection').style.display !== 'none') {
+              loadRegistrations(eventId);
+            }
+          } else {
+            alert(data.message || 'Ошибка при отмене регистрации');
+          }
+        })
+        .catch(error => {
+          console.error('Error canceling registration:', error);
+          alert('Ошибка при отмене регистрации. Проверьте подключение к интернету.');
+        });
     }
     
     // Вспомогательные функции
@@ -2037,7 +2158,12 @@
       }
       
       fetch(`${API_URL}?action=getRegistrations&eventId=${eventId}`)
-        .then(response => response.json())
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
         .then(registrations => {
           const registrationsList = document.getElementById('registrationsList');
           registrationsList.innerHTML = '';
@@ -2073,7 +2199,12 @@
       
       // Сначала получаем все материалы
       fetch(`${API_URL}?action=getMaterials&eventId=all`)
-        .then(response => response.json())
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
         .then(materials => {
           const materialsList = document.getElementById('existingMaterialsList');
           materialsList.innerHTML = '';
@@ -2124,9 +2255,25 @@
         return;
       }
       
-      // В реальной системе здесь был бы запрос к API для удаления материала
-      alert('Материал удален');
-      loadExistingMaterials();
+      fetch(`${API_URL}?action=deleteMaterial&id=${materialId}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          if (data.success) {
+            alert('Материал удален');
+            loadExistingMaterials();
+          } else {
+            alert('Ошибка при удалении материала');
+          }
+        })
+        .catch(error => {
+          console.error('Error deleting material:', error);
+          alert('Ошибка при удалении материала');
+        });
     }
     
     function saveEvent() {
@@ -2150,10 +2297,8 @@
         capacity: document.getElementById('eventCapacity').value
       };
       
-      // В реальной системе здесь был бы запрос к API для сохранения
       fetch(`${API_URL}?action=updateEvent`, {
         method: 'POST',
-        mode: 'no-cors',
         body: new URLSearchParams({
           id: eventData.id,
           title: eventData.title,
@@ -2167,10 +2312,20 @@
           capacity: eventData.capacity
         })
       })
-      .then(() => {
-        alert('Мероприятие сохранено!');
-        loadSchedule();
-        loadMaterialsEvents();
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          alert('Мероприятие сохранено!');
+          loadSchedule();
+          loadMaterialsEvents();
+        } else {
+          alert('Ошибка при сохранении мероприятия');
+        }
       })
       .catch(error => {
         console.error('Error saving event:', error);
@@ -2208,10 +2363,8 @@
         return;
       }
       
-      // В реальной системе здесь был бы запрос к API для сохранения настроек
       fetch(`${API_URL}?action=updateSettings`, {
         method: 'POST',
-        mode: 'no-cors',
         body: new URLSearchParams({
           showSchedule: settings.showSchedule,
           showMaterials: settings.showMaterials,
@@ -2222,10 +2375,20 @@
           fontFamily: settings.fontFamily
         })
       })
-      .then(() => {
-        applySettings();
-        updateVisibilityBasedOnSettings();
-        alert('Настройки сохранены!');
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          applySettings();
+          updateVisibilityBasedOnSettings();
+          alert('Настройки сохранены!');
+        } else {
+          alert('Ошибка при сохранении настроек');
+        }
       })
       .catch(error => {
         console.error('Error saving settings:', error);
@@ -2251,10 +2414,8 @@
         return;
       }
       
-      // В реальной системе здесь был бы запрос к API для добавления материала
       fetch(`${API_URL}?action=addMaterial`, {
         method: 'POST',
-        mode: 'no-cors',
         body: new URLSearchParams({
           eventId: eventId,
           title: title,
@@ -2262,14 +2423,24 @@
           type: type
         })
       })
-      .then(() => {
-        alert('Материал добавлен!');
-        document.getElementById('materialTitle').value = '';
-        document.getElementById('materialUrl').value = '';
-        loadExistingMaterials();
-        
-        // Обновляем материалы для всех мероприятий
-        loadSchedule();
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          alert('Материал добавлен!');
+          document.getElementById('materialTitle').value = '';
+          document.getElementById('materialUrl').value = '';
+          loadExistingMaterials();
+          
+          // Обновляем материалы для всех мероприятий
+          loadSchedule();
+        } else {
+          alert('Ошибка при добавлении материала');
+        }
       })
       .catch(error => {
         console.error('Error adding material:', error);
@@ -2287,13 +2458,12 @@
       fetch(`${API_URL}?action=loginAdmin&password=${encodeURIComponent(password)}`)
         .then(response => {
           if (!response.ok) {
-            throw new Error('Network error');
+            throw new Error(`HTTP error! status: ${response.status}`);
           }
           return response.json();
         })
         .then(data => {
           if (data.success) {
-            localStorage.setItem('adminPassword', password);
             document.getElementById('adminLoginModal').style.display = 'none';
             
             // Показываем админ-панель
@@ -2357,9 +2527,8 @@
         const eventsList = document.getElementById('eventsList');
         if (eventsList) {
           eventsList.innerHTML = `
-            <div class="no-events">
-              <div class="no-events-icon">⚠️</div>
-              <h3>Ошибка API</h3>
+            <div class="api-error">
+              <h4>Ошибка API</h4>
               <p>API_URL не настроен. Замените его на свою ссылку из Google Apps Script</p>
               <p>Текущий URL: ${API_URL}</p>
             </div>
