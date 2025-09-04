@@ -1024,47 +1024,70 @@
     }
     
     // Загрузка настроек
-    function loadSettings() {
-      fetch(`${API_URL}?action=getSettings`)
-        .then(response => response.json())
-        .then(data => {
-          settings = {
-            showSchedule: data.showSchedule === 'true',
-            showMaterials: data.showMaterials === 'true',
-            showLeaderboard: data.showLeaderboard === 'true',
-            primaryColor: data.primaryColor || '#0088cc',
-            secondaryColor: data.secondaryColor || '#e3f2fd',
-            logoUrl: data.logoUrl || '',
-            fontFamily: data.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
-          };
-          
-          // Применяем стили
-          applySettings();
-          
-          // Обновляем отображение в зависимости от настроек
-          updateVisibilityBasedOnSettings();
-          
-          // Заполняем форму настроек
-          document.getElementById('showSchedule').checked = settings.showSchedule;
-          document.getElementById('showMaterials').checked = settings.showMaterials;
-          document.getElementById('showLeaderboard').checked = settings.showLeaderboard;
-          document.getElementById('primaryColor').value = settings.primaryColor;
-          document.getElementById('secondaryColor').value = settings.secondaryColor;
-          document.getElementById('logoUrl').value = settings.logoUrl;
-          document.getElementById('fontFamily').value = settings.fontFamily;
-        })
-        .catch(error => {
-          console.error('Error loading settings:', error);
-          // Используем настройки по умолчанию
-          settings = {
-            showSchedule: true,
-            showMaterials: true,
-            showLeaderboard: true,
-            primaryColor: '#0088cc',
-            secondaryColor: '#e3f2fd',
-            logoUrl: '',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
-          };
+function loadSettings() {
+  // Сначала устанавливаем безопасные значения по умолчанию
+  settings = {
+    showSchedule: true,
+    showMaterials: true,
+    showLeaderboard: true,
+    primaryColor: '#0088cc',
+    secondaryColor: '#e3f2fd',
+    logoUrl: '',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+  };
+  
+  // Применяем безопасные настройки сразу
+  applySettings();
+  
+  // Теперь пытаемся загрузить настройки из API
+  fetch(`${API_URL}?action=getSettings`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    })
+    .then(data => {
+      // Проверяем и корректируем полученные настройки
+      settings = {
+        showSchedule: data.showSchedule === 'true',
+        showMaterials: data.showMaterials === 'true',
+        showLeaderboard: data.showLeaderboard === 'true',
+        primaryColor: isValidColor(data.primaryColor) ? data.primaryColor : '#0088cc',
+        secondaryColor: isValidColor(data.secondaryColor) ? data.secondaryColor : '#e3f2fd',
+        logoUrl: data.logoUrl || '',
+        fontFamily: data.fontFamily || settings.fontFamily
+      };
+      
+      // Применяем корректные настройки
+      applySettings();
+      
+      // Обновляем отображение в зависимости от настроек
+      updateVisibilityBasedOnSettings();
+      
+      // Заполняем форму настроек
+      document.getElementById('showSchedule').checked = settings.showSchedule;
+      document.getElementById('showMaterials').checked = settings.showMaterials;
+      document.getElementById('showLeaderboard').checked = settings.showLeaderboard;
+      document.getElementById('primaryColor').value = settings.primaryColor;
+      document.getElementById('secondaryColor').value = settings.secondaryColor;
+      document.getElementById('logoUrl').value = settings.logoUrl;
+      document.getElementById('fontFamily').value = settings.fontFamily;
+    })
+    .catch(error => {
+      console.error('Error loading settings:', error);
+      // Настройки уже установлены в безопасные значения по умолчанию
+      updateVisibilityBasedOnSettings();
+    });
+}
+
+// Вспомогательная функция для проверки валидности цвета
+function isValidColor(color) {
+  if (!color) return false;
+  // Проверяем формат HEX (#RRGGBB)
+  const hexPattern = /^#([0-9A-Fa-f]{6})$/;
+  return hexPattern.test(color);
+}
           
           // Применяем стили
           applySettings();
@@ -1222,10 +1245,46 @@
       });
       
       // Вход в админ-панель
-      document.getElementById('loginAdminBtn').addEventListener('click', function() {
-        const password = document.getElementById('adminPassword').value;
-        loginAdmin(password);
-      });
+function loginAdmin(password) {
+  // Сначала проверяем, установлен ли правильный API_URL
+  if (API_URL.includes('AKfycbxY')) {
+    alert('Ошибка: Не настроен API_URL. Замените ссылку в коде на свою из Google Apps Script.');
+    return;
+  }
+  
+  fetch(`${API_URL}?action=loginAdmin&password=${encodeURIComponent(password)}`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network error');
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.success) {
+        localStorage.setItem('adminPassword', password);
+        hideAdminLoginModal();
+        
+        // Загружаем расписание
+        loadSchedule();
+        
+        // Загружаем материалы для выбора
+        loadMaterialsEvents();
+        
+        // Обновляем интерфейс админ-панели
+        updateAdminInterface();
+      } else {
+        alert(data.message || 'Неверный пароль');
+        // Удаляем неправильный пароль из localStorage
+        localStorage.removeItem('adminPassword');
+      }
+    })
+    .catch(error => {
+      console.error('Error logging in:', error);
+      alert('Ошибка подключения к серверу. Проверьте:\n1. Правильность API_URL\n2. Доступность Google Apps Script\n3. Настройки общего доступа в Google Таблице');
+      // Удаляем пароль из localStorage, чтобы не пытаться автоматически войти
+      localStorage.removeItem('adminPassword');
+    });
+}
       
       // Выход из админ-панели
       document.getElementById('adminLogoutBtn').addEventListener('click', function() {
@@ -1236,6 +1295,52 @@
         document.querySelectorAll('.admin-panel').forEach(el => {
           el.style.display = 'none';
         });
+
+// Загрузка расписания
+function loadSchedule() {
+  fetch(`${API_URL}?action=getSchedule`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    })
+    .then(data => {
+      // Проверяем, что data - это массив
+      if (Array.isArray(data)) {
+        scheduleData = data;
+        renderSchedule();
+        
+        // Для каждого мероприятия загружаем материалы
+        scheduleData.forEach(event => {
+          loadEventMaterials(event.id);
+        });
+      } else {
+        console.error('Invalid schedule data format', data);
+        showEmptySchedule();
+      }
+    })
+    .catch(error => {
+      console.error('Error loading schedule:', error);
+      showEmptySchedule();
+    });
+}
+
+// Показать пустое расписание с сообщением об ошибке
+function showEmptySchedule() {
+  const eventsList = document.getElementById('eventsList');
+  eventsList.innerHTML = `
+    <div class="no-events">
+      <div class="no-events-icon">⚠️</div>
+      <h3>Ошибка загрузки</h3>
+      <p>Не удалось загрузить расписание. Проверьте подключение к API.</p>
+      <button class="register-btn" id="retryScheduleBtn" style="margin-top: 15px;">Попробовать снова</button>
+    </div>
+  `;
+  
+  // Добавляем обработчик для кнопки повторной попытки
+  document.getElementById('retryScheduleBtn').addEventListener('click', loadSchedule);
+}
         
         // Переключаемся на расписание
         activateTab('schedule');
