@@ -930,6 +930,14 @@
       </div>
       <div class="modal-body">
         <div class="form-group">
+          <label for="adminRole">Роль</label>
+          <select id="adminRole">
+            <option value="admin">Администратор</option>
+            <option value="user">Участник</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
           <label for="adminPassword">Пароль</label>
           <input type="password" id="adminPassword" placeholder="Введите пароль">
         </div>
@@ -1077,11 +1085,4 @@
       });
       
       // Обновляем отображение в зависимости от настроек
-      updateVisibilityBasedOnSettings();
-    }
-    
-    // Попытка загрузить настройки
-    function tryLoadSettings() {
-      // Сначала устанавливаем безопасные значения по умолчанию
-      settings = {
-        showSchedule: true,
+      updateVisibilityBasedOn
