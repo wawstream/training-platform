@@ -1,148 +1,174 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Расписание тренингов</title>
+  <title>Тренинги</title>
+  <meta charset="utf-8">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: '#4f46e5',
-            secondary: '#06b6d4',
-          }
-        }
-      }
-    }
-  </script>
 </head>
-<body class="bg-gray-50 font-sans">
-
-  <!-- App Container -->
-  <div id="app" class="max-w-4xl mx-auto p-4">
-    <header class="text-center mb-8">
-      <h1 class="text-3xl font-bold text-primary">🎓 Расписание тренингов</h1>
-      <p class="text-gray-600">Выберите группу и зарегистрируйтесь на мероприятия</p>
-    </header>
-
-    <!-- Login as Admin -->
-    <div id="adminLogin" class="bg-white p-6 rounded-lg shadow mb-6">
-      <h2 class="text-xl font-semibold mb-4">🔐 Администратор</h2>
-      <input type="password" id="adminPass" placeholder="Введите пароль" class="border p-2 rounded w-full mb-2" />
-      <button onclick="adminLogin()" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700">Войти</button>
+<body class="bg-gray-100 p-4">
+  <div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-4">🎓 Расписание тренингов</h1>
+    
+    <!-- Админ панель -->
+    <div id="adminPanel" class="bg-white p-4 rounded mb-4 hidden">
+      <h2 class="text-xl mb-2">🔐 Админ панель</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+        <input id="title" placeholder="Тема тренинга" class="border p-2">
+        <input id="date" type="datetime-local" class="border p-2">
+        <input id="group" placeholder="Группа" class="border p-2">
+        <textarea id="desc" placeholder="Описание" class="border p-2"></textarea>
+      </div>
+      <button onclick="addTraining()" class="bg-blue-500 text-white px-4 py-2 rounded">
+        ➕ Добавить тренинг
+      </button>
     </div>
-
-    <!-- Admin Panel (hidden by default) -->
-    <div id="adminPanel" class="bg-white p-6 rounded-lg shadow mb-6 hidden">
-      <h2 class="text-xl font-semibold mb-4">➕ Добавить тренинг</h2>
-      <input id="title" placeholder="Тема тренинга" class="border p-2 rounded w-full mb-2" />
-      <input id="date" type="datetime-local" class="border p-2 rounded w-full mb-2" />
-      <select id="group" class="border p-2 rounded w-full mb-2">
-        <option value="all">Все группы</option>
-        <option value="marketing">Маркетинг</option>
-        <option value="sales">Продажи</option>
-        <option value="hr">HR</option>
-      </select>
-      <textarea id="desc" placeholder="Описание" class="border p-2 rounded w-full mb-2"></textarea>
-      <button onclick="addTraining()" class="bg-secondary text-white px-4 py-2 rounded hover:bg-teal-600">Добавить</button>
+    
+    <!-- Вход админа -->
+    <div id="adminLogin" class="bg-white p-4 rounded mb-4">
+      <h2 class="text-xl mb-2">🔐 Вход администратора</h2>
+      <input id="adminPass" type="password" placeholder="Пароль" class="border p-2 mr-2">
+      <button onclick="adminLogin()" class="bg-gray-500 text-white px-4 py-2 rounded">
+        Войти
+      </button>
     </div>
-
-    <!-- Group Selector -->
-    <div class="bg-white p-6 rounded-lg shadow mb-6">
-      <h2 class="text-xl font-semibold mb-4">👥 Выберите вашу группу</h2>
-      <select onchange="filterByGroup(this.value)" class="border p-2 rounded w-full">
-        <option value="all">Все группы</option>
-        <option value="marketing">Маркетинг</option>
-        <option value="sales">Продажи</option>
-        <option value="hr">HR</option>
-      </select>
-    </div>
-
-    <!-- Trainings List -->
-    <div id="trainingsList" class="space-y-4">
-      <!-- Will be filled by JS -->
-    </div>
-
-    <!-- No trainings -->
-    <div id="noTrainings" class="hidden text-center text-gray-500 py-8">
+    
+    <!-- Список тренингов -->
+    <div id="trainingsList"></div>
+    
+    <!-- Нет тренингов -->
+    <div id="noTrainings" class="text-center text-gray-500 py-8 hidden">
       Нет доступных тренингов
     </div>
   </div>
 
   <script>
-    // ✅ ТВОЯ ССЫЛКА ОТ GOOGLE APPS SCRIPT
-    const API_URL = 'https://script.google.com/macros/s/AKfycbydfwBoUAV-NHtSe4pbeukFV8aWEYF-8Elt7DrdJIKwuw8yZPmP0YJ9WS8T4I3gW4Mv/exec';
-
-    let currentUserGroup = 'all';
+    // ТВОЙ URL ОТ GAS
+    const API_URL = 'https://script.google.com/macros/s/AKfycbwzkMypfUUVfHjM2Cx0W4mzYQlUI3pjdmQzLbz5CJQijRYfQLDiyWWQk-YgfadL8m_Z/exec';
+    
     let isAdmin = false;
-
-    // Загрузка данных
-    async function loadTrainings() {
-      try {
-        const res = await fetch(API_URL + '?action=getTrainings');
-        const trainings = await res.json();
-        renderTrainings(trainings);
-        setTimeout(loadTrainings, 10000); // Обновлять каждые 10 сек
-      } catch (err) {
-        console.error(err);
-        setTimeout(loadTrainings, 10000);
+    
+    // Вход админа
+    function adminLogin() {
+      const pass = document.getElementById('adminPass').value;
+      if (pass === 'admin123') {
+        document.getElementById('adminLogin').style.display = 'none';
+        document.getElementById('adminPanel').classList.remove('hidden');
+        isAdmin = true;
+      } else {
+        alert('Неверный пароль');
       }
     }
-
-    // Регистрация
-    async function register(id) {
-      const name = prompt("Введите ваше имя:");
-      if (!name) return;
-
+    
+    // Загрузка тренингов
+    async function loadTrainings() {
       try {
-        await fetch(API_URL, {
+        const response = await fetch(API_URL + '?action=getTrainings');
+        const trainings = await response.json();
+        
+        const container = document.getElementById('trainingsList');
+        const noTrainings = document.getElementById('noTrainings');
+        
+        if (!trainings || trainings.length === 0) {
+          container.innerHTML = '';
+          noTrainings.classList.remove('hidden');
+          return;
+        }
+        
+        noTrainings.classList.add('hidden');
+        let html = '';
+        
+        trainings.forEach(t => {
+          const date = new Date(t.date).toLocaleString('ru-RU', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          
+          const participantsList = t.participants && t.participants.length > 0
+            ? t.participants.map(p => `<li class="text-sm">${p}</li>`).join('')
+            : '<li class="text-sm text-gray-400">Никто не зарегистрирован</li>';
+          
+          const deleteBtn = isAdmin 
+            ? `<button onclick="deleteTraining('${t.id}')" class="bg-red-500 text-white px-2 py-1 rounded text-sm ml-2">
+                Удалить
+              </button>`
+            : '';
+          
+          html += `
+            <div class="bg-white p-4 rounded shadow mb-4">
+              <div class="flex justify-between items-start">
+                <h3 class="text-xl font-bold">${t.title}</h3>
+                ${deleteBtn}
+              </div>
+              <p class="text-gray-600 text-sm mt-1">📅 ${date} | Группа: ${t.group}</p>
+              <p class="mt-2">${t.desc}</p>
+              <div class="mt-4">
+                <button onclick="register('${t.id}')" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                  📝 Зарегистрироваться
+                </button>
+              </div>
+              <div class="mt-4">
+                <p class="font-medium">Зарегистрированы:</p>
+                <ul class="list-disc list-inside mt-1">
+                  ${participantsList}
+                </ul>
+              </div>
+            </div>
+          `;
+        });
+        
+        container.innerHTML = html;
+      } catch (error) {
+        console.error('Ошибка загрузки:', error);
+      }
+    }
+    
+    // Регистрация
+    async function register(trainingId) {
+      const name = prompt('Введите ваше имя:');
+      if (!name) return;
+      
+      try {
+        const response = await fetch(API_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
             action: 'register',
-            training_id: id,
+            training_id: trainingId,
             name: name
           })
         });
-
-        loadTrainings(); // Обновить
-      } catch (err) {
-        console.error("Ошибка регистрации:", err);
-        alert("Ошибка при регистрации");
+        
+        const result = await response.json();
+        if (result.success) {
+          loadTrainings();
+        } else {
+          alert('Ошибка регистрации');
+        }
+      } catch (error) {
+        console.error('Ошибка:', error);
+        alert('Ошибка при регистрации');
       }
     }
-
-    // Админ: вход
-    async function adminLogin() {
-      const pass = document.getElementById('adminPass').value;
-      if (pass !== 'admin123') {
-        alert('Неверный пароль');
-        return;
-      }
-
-      document.getElementById('adminLogin').style.display = 'none';
-      document.getElementById('adminPanel').classList.remove('hidden');
-      isAdmin = true;
-    }
-
-    // Админ: добавить тренинг
+    
+    // Добавление тренинга
     async function addTraining() {
       const title = document.getElementById('title').value;
       const date = document.getElementById('date').value;
       const group = document.getElementById('group').value;
       const desc = document.getElementById('desc').value;
-
+      
       if (!title || !date) {
-        alert('Заполните все поля');
+        alert('Заполните тему и дату');
         return;
       }
-
+      
       try {
-        await fetch(API_URL, {
+        const response = await fetch(API_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -150,108 +176,61 @@
           body: JSON.stringify({
             action: 'addTraining',
             id: Date.now().toString(),
-            title,
-            date,
-            group,
-            desc
+            title: title,
+            date: date,
+            group: group,
+            desc: desc
           })
         });
-
-        document.getElementById('title').value = '';
-        document.getElementById('date').value = '';
-        document.getElementById('desc').value = '';
-
-        loadTrainings();
-      } catch (err) {
-        console.error("Ошибка добавления:", err);
-        alert("Ошибка при добавлении тренинга");
+        
+        const result = await response.json();
+        if (result.success) {
+          document.getElementById('title').value = '';
+          document.getElementById('date').value = '';
+          document.getElementById('group').value = '';
+          document.getElementById('desc').value = '';
+          loadTrainings();
+        } else {
+          alert('Ошибка добавления тренинга');
+        }
+      } catch (error) {
+        console.error('Ошибка:', error);
+        alert('Ошибка при добавлении тренинга');
       }
     }
-
-    // Админ: удалить
-    async function deleteTraining(id) {
+    
+    // Удаление тренинга
+    async function deleteTraining(trainingId) {
       if (!confirm('Удалить тренинг?')) return;
+      
       try {
-        await fetch(API_URL, {
+        const response = await fetch(API_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
             action: 'deleteTraining',
-            id: id
+            id: trainingId
           })
         });
-        loadTrainings();
-      } catch (err) {
-        console.error("Ошибка удаления:", err);
-        alert("Ошибка при удалении тренинга");
+        
+        const result = await response.json();
+        if (result.success) {
+          loadTrainings();
+        } else {
+          alert('Ошибка удаления');
+        }
+      } catch (error) {
+        console.error('Ошибка:', error);
+        alert('Ошибка при удалении');
       }
     }
-
-    // Фильтрация
-    function filterByGroup(group) {
-      currentUserGroup = group;
-      loadTrainings();
-    }
-
-    // Рендер
-    function renderTrainings(data) {
-      const container = document.getElementById('trainingsList');
-      const noTrainings = document.getElementById('noTrainings');
-      container.innerHTML = '';
-
-      const filtered = data.filter(t => 
-        currentUserGroup === 'all' || t.group === currentUserGroup
-      );
-
-      if (filtered.length === 0) {
-        noTrainings.classList.remove('hidden');
-        return;
-      }
-      noTrainings.classList.add('hidden');
-
-      filtered.forEach(t => {
-        const date = new Date(t.date).toLocaleString('ru-RU', {
-          day: '2-digit',
-          month: 'short',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-
-        const participantsList = t.participants?.length > 0
-          ? t.participants.map(p => `<li class="text-sm text-gray-600">${p}</li>`).join('')
-          : '<li class="text-sm text-gray-400">Никто не зарегистрирован</li>';
-
-        const adminBtn = isAdmin 
-          ? `<button onclick="deleteTraining(${t.id})" class="text-red-500 text-sm ml-2 hover:underline">Удалить</button>`
-          : '';
-
-        container.innerHTML += `
-          <div class="bg-white p-5 rounded-lg shadow">
-            <div class="flex justify-between items-start">
-              <h3 class="text-xl font-semibold">${t.title}</h3>
-              ${adminBtn}
-            </div>
-            <p class="text-gray-600 text-sm mt-1">📅 ${date} | Группа: ${t.group}</p>
-            <p class="mt-2">${t.desc}</p>
-            <div class="mt-4">
-              <button onclick="register(${t.id})" class="bg-primary text-white px-4 py-1 rounded text-sm hover:bg-blue-700">
-                Зарегистрироваться
-              </button>
-            </div>
-            <div class="mt-4">
-              <p class="text-sm font-medium">Зарегистрированы:</p>
-              <ul class="list-disc list-inside mt-1">${participantsList}</ul>
-            </div>
-          </div>
-        `;
-      });
-    }
-
+    
     // Запуск
-    window.onload = () => {
+    window.onload = function() {
       loadTrainings();
+      setInterval(loadTrainings, 10000);
     };
   </script>
 </body>
