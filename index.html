@@ -1,161 +1,234 @@
-<script>
-  // Замени на свой URL от Google Apps Script
-  const API_URL = 'https://script.google.com/macros/s/AKfycbxezjIu_5O2nnpPEH95tM6IpQAWK7EvWaBYFBusb4kqKiyORrkMHhyMOBU5CpED91VV/exec';
-
-  let currentUserGroup = 'all';
-  let isAdmin = false;
-
-  // Загрузка данных
-  async function loadTrainings() {
-    try {
-      const res = await fetch(API_URL + '?action=getTrainings');
-      const trainings = await res.json();
-      renderTrainings(trainings);
-      setTimeout(loadTrainings, 10000); // Обновлять каждые 10 сек
-    } catch (err) {
-      console.error(err);
-      setTimeout(loadTrainings, 10000);
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Расписание тренингов</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#4f46e5',
+            secondary: '#06b6d4',
+          }
+        }
+      }
     }
-  }
+  </script>
+</head>
+<body class="bg-gray-50 font-sans">
 
-  // Регистрация
-  async function register(id) {
-    const name = prompt("Введите ваше имя:");
-    if (!name) return;
+  <!-- App Container -->
+  <div id="app" class="max-w-4xl mx-auto p-4">
+    <header class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-primary">🎓 Расписание тренингов</h1>
+      <p class="text-gray-600">Выберите группу и зарегистрируйтесь на мероприятия</p>
+    </header>
 
-    await fetch(API_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'register',
-        training_id: id,
-        name: name
-      })
-    });
+    <!-- Login as Admin -->
+    <div id="adminLogin" class="bg-white p-6 rounded-lg shadow mb-6">
+      <h2 class="text-xl font-semibold mb-4">🔐 Администратор</h2>
+      <input type="password" id="adminPass" placeholder="Введите пароль" class="border p-2 rounded w-full mb-2" />
+      <button onclick="adminLogin()" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700">Войти</button>
+    </div>
 
-    loadTrainings(); // Обновить
-  }
+    <!-- Admin Panel (hidden by default) -->
+    <div id="adminPanel" class="bg-white p-6 rounded-lg shadow mb-6 hidden">
+      <h2 class="text-xl font-semibold mb-4">➕ Добавить тренинг</h2>
+      <input id="title" placeholder="Тема тренинга" class="border p-2 rounded w-full mb-2" />
+      <input id="date" type="datetime-local" class="border p-2 rounded w-full mb-2" />
+      <select id="group" class="border p-2 rounded w-full mb-2">
+        <option value="all">Все группы</option>
+        <option value="marketing">Маркетинг</option>
+        <option value="sales">Продажи</option>
+        <option value="hr">HR</option>
+      </select>
+      <textarea id="desc" placeholder="Описание" class="border p-2 rounded w-full mb-2"></textarea>
+      <button onclick="addTraining()" class="bg-secondary text-white px-4 py-2 rounded hover:bg-teal-600">Добавить</button>
+    </div>
 
-  // Админ: вход
-  async function adminLogin() {
-    const pass = document.getElementById('adminPass').value;
-    if (pass !== 'admin123') {
-      alert('Неверный пароль');
-      return;
+    <!-- Group Selector -->
+    <div class="bg-white p-6 rounded-lg shadow mb-6">
+      <h2 class="text-xl font-semibold mb-4">👥 Выберите вашу группу</h2>
+      <select onchange="filterByGroup(this.value)" class="border p-2 rounded w-full">
+        <option value="all">Все группы</option>
+        <option value="marketing">Маркетинг</option>
+        <option value="sales">Продажи</option>
+        <option value="hr">HR</option>
+      </select>
+    </div>
+
+    <!-- Trainings List -->
+    <div id="trainingsList" class="space-y-4">
+      <!-- Will be filled by JS -->
+    </div>
+
+    <!-- No trainings -->
+    <div id="noTrainings" class="hidden text-center text-gray-500 py-8">
+      Нет доступных тренингов
+    </div>
+  </div>
+
+  <script>
+    // Замени на свой URL от Google Apps Script
+    const API_URL = 'https://script.google.com/macros/s/AKfycbxezjIu_5O2nnpPEH95tM6IpQAWK7EvWaBYFBusb4kqKiyORrkMHhyMOBU5CpED91VV/exec';
+
+    let currentUserGroup = 'all';
+    let isAdmin = false;
+
+    // Загрузка данных
+    async function loadTrainings() {
+      try {
+        const res = await fetch(API_URL + '?action=getTrainings');
+        const trainings = await res.json();
+        renderTrainings(trainings);
+        setTimeout(loadTrainings, 10000); // Обновлять каждые 10 сек
+      } catch (err) {
+        console.error(err);
+        setTimeout(loadTrainings, 10000);
+      }
     }
 
-    document.getElementById('adminLogin').style.display = 'none';
-    document.getElementById('adminPanel').classList.remove('hidden');
-    isAdmin = true;
-  }
+    // Регистрация
+    async function register(id) {
+      const name = prompt("Введите ваше имя:");
+      if (!name) return;
 
-  // Админ: добавить тренинг
-  async function addTraining() {
-    const title = document.getElementById('title').value;
-    const date = document.getElementById('date').value;
-    const group = document.getElementById('group').value;
-    const desc = document.getElementById('desc').value;
-
-    if (!title || !date) {
-      alert('Заполните все поля');
-      return;
-    }
-
-    await fetch(API_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'addTraining',
-        id: Date.now().toString(),
-        title,
-        date,
-        group,
-        desc
-      })
-    });
-
-    document.getElementById('title').value = '';
-    document.getElementById('date').value = '';
-    document.getElementById('desc').value = '';
-
-    loadTrainings();
-  }
-
-  // Админ: удалить
-  async function deleteTraining(id) {
-    if (!confirm('Удалить тренинг?')) return;
-    await fetch(API_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'deleteTraining',
-        id: id
-      })
-    });
-    loadTrainings();
-  }
-
-  // Фильтрация
-  function filterByGroup(group) {
-    currentUserGroup = group;
-    loadTrainings();
-  }
-
-  // Рендер
-  function renderTrainings(data) {
-    const container = document.getElementById('trainingsList');
-    const noTrainings = document.getElementById('noTrainings');
-    container.innerHTML = '';
-
-    const filtered = data.filter(t => 
-      currentUserGroup === 'all' || t.group === currentUserGroup
-    );
-
-    if (filtered.length === 0) {
-      noTrainings.classList.remove('hidden');
-      return;
-    }
-    noTrainings.classList.add('hidden');
-
-    filtered.forEach(t => {
-      const date = new Date(t.date).toLocaleString('ru-RU', {
-        day: '2-digit',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit'
+      await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'register',
+          training_id: id,
+          name: name
+        })
       });
 
-      const participantsList = t.participants?.length > 0
-        ? t.participants.map(p => `<li class="text-sm text-gray-600">${p}</li>`).join('')
-        : '<li class="text-sm text-gray-400">Никто не зарегистрирован</li>';
+      loadTrainings(); // Обновить
+    }
 
-      const adminBtn = isAdmin 
-        ? `<button onclick="deleteTraining(${t.id})" class="text-red-500 text-sm ml-2 hover:underline">Удалить</button>`
-        : '';
+    // Админ: вход
+    async function adminLogin() {
+      const pass = document.getElementById('adminPass').value;
+      if (pass !== 'admin123') {
+        alert('Неверный пароль');
+        return;
+      }
 
-      container.innerHTML += `
-        <div class="bg-white p-5 rounded-lg shadow">
-          <div class="flex justify-between items-start">
-            <h3 class="text-xl font-semibold">${t.title}</h3>
-            ${adminBtn}
+      document.getElementById('adminLogin').style.display = 'none';
+      document.getElementById('adminPanel').classList.remove('hidden');
+      isAdmin = true;
+    }
+
+    // Админ: добавить тренинг
+    async function addTraining() {
+      const title = document.getElementById('title').value;
+      const date = document.getElementById('date').value;
+      const group = document.getElementById('group').value;
+      const desc = document.getElementById('desc').value;
+
+      if (!title || !date) {
+        alert('Заполните все поля');
+        return;
+      }
+
+      await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'addTraining',
+          id: Date.now().toString(),
+          title,
+          date,
+          group,
+          desc
+        })
+      });
+
+      document.getElementById('title').value = '';
+      document.getElementById('date').value = '';
+      document.getElementById('desc').value = '';
+
+      loadTrainings();
+    }
+
+    // Админ: удалить
+    async function deleteTraining(id) {
+      if (!confirm('Удалить тренинг?')) return;
+      await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'deleteTraining',
+          id: id
+        })
+      });
+      loadTrainings();
+    }
+
+    // Фильтрация
+    function filterByGroup(group) {
+      currentUserGroup = group;
+      loadTrainings();
+    }
+
+    // Рендер
+    function renderTrainings(data) {
+      const container = document.getElementById('trainingsList');
+      const noTrainings = document.getElementById('noTrainings');
+      container.innerHTML = '';
+
+      const filtered = data.filter(t => 
+        currentUserGroup === 'all' || t.group === currentUserGroup
+      );
+
+      if (filtered.length === 0) {
+        noTrainings.classList.remove('hidden');
+        return;
+      }
+      noTrainings.classList.add('hidden');
+
+      filtered.forEach(t => {
+        const date = new Date(t.date).toLocaleString('ru-RU', {
+          day: '2-digit',
+          month: 'short',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        const participantsList = t.participants?.length > 0
+          ? t.participants.map(p => `<li class="text-sm text-gray-600">${p}</li>`).join('')
+          : '<li class="text-sm text-gray-400">Никто не зарегистрирован</li>';
+
+        const adminBtn = isAdmin 
+          ? `<button onclick="deleteTraining(${t.id})" class="text-red-500 text-sm ml-2 hover:underline">Удалить</button>`
+          : '';
+
+        container.innerHTML += `
+          <div class="bg-white p-5 rounded-lg shadow">
+            <div class="flex justify-between items-start">
+              <h3 class="text-xl font-semibold">${t.title}</h3>
+              ${adminBtn}
+            </div>
+            <p class="text-gray-600 text-sm mt-1">📅 ${date} | Группа: ${t.group}</p>
+            <p class="mt-2">${t.desc}</p>
+            <div class="mt-4">
+              <button onclick="register(${t.id})" class="bg-primary text-white px-4 py-1 rounded text-sm hover:bg-blue-700">
+                Зарегистрироваться
+              </button>
+            </div>
+            <div class="mt-4">
+              <p class="text-sm font-medium">Зарегистрированы:</p>
+              <ul class="list-disc list-inside mt-1">${participantsList}</ul>
+            </div>
           </div>
-          <p class="text-gray-600 text-sm mt-1">📅 ${date} | Группа: ${t.group}</p>
-          <p class="mt-2">${t.desc}</p>
-          <div class="mt-4">
-            <button onclick="register(${t.id})" class="bg-primary text-white px-4 py-1 rounded text-sm hover:bg-blue-700">
-              Зарегистрироваться
-            </button>
-          </div>
-          <div class="mt-4">
-            <p class="text-sm font-medium">Зарегистрированы:</p>
-            <ul class="list-disc list-inside mt-1">${participantsList}</ul>
-          </div>
-        </div>
-      `;
-    });
-  }
+        `;
+      });
+    }
 
-  // Запуск
-  window.onload = () => {
-    loadTrainings();
-  };
-</script>
-
-<!-- Обновлено: 05.04.2025 -->
+    // Запуск
+    window.onload = () => {
+      loadTrainings();
+    };
+  </script>
+</body>
+</html>
